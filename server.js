@@ -44,8 +44,8 @@ const limiter = rateLimit({
 let options;
 try {
 	options = {
-		key: fs.readFileSync('./private.key'),
-		cert: fs.readFileSync('./certificate.crt'),
+		key: fs.readFileSync(process.env.SSL_KEY_PATH),
+		cert: fs.readFileSync(process.env.SSL_CERT_PATH),
 	};
 } catch (error) {
 	logger.error('Ошибка при чтении SSL сертификатов:', error);
@@ -65,7 +65,11 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
 }
 
 // Middleware
-app.use(cors());
+app.use(
+	cors({
+		origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+	})
+);
 app.use(express.json());
 app.use(morgan('combined'));
 app.use(limiter);
@@ -133,8 +137,6 @@ app.post('/ask', async (req, res) => {
 	}
 });
 
-const server = https.createServer(options, app);
-
 // Graceful shutdown
 process.on('SIGTERM', () => {
 	logger.info('SIGTERM received. Shutting down gracefully');
@@ -144,6 +146,15 @@ process.on('SIGTERM', () => {
 	});
 });
 
+let server;
+if (options.key && options.cert) {
+	server = https.createServer(options, app);
+	logger.info('HTTPS server created');
+} else {
+	server = http.createServer(app);
+	logger.warn('HTTP server created (no SSL certificates found)');
+}
+
 server.listen(port, () => {
-	logger.info(`Server is running on https://localhost:${port}`);
+	logger.info(`Server is running :)`);
 });
