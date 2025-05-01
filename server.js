@@ -2,15 +2,22 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const morgan = require('morgan');
-const http = require('http'); // <-- Только HTTP
+const http = require('http');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const winston = require('winston');
 const validator = require('validator');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const emailTemplate = fs.readFileSync(
+	path.join(__dirname, 'email-template.html'),
+	'utf-8'
+);
 
 // Настройка логгера
 const logger = winston.createLogger({
@@ -100,15 +107,26 @@ app.post('/ask', async (req, res) => {
 		const ollamaResponse = response.data.response;
 
 		if (email && transporter) {
-			await transporter.sendMail({
+			// Заполнение шаблона
+			const htmlEmail = emailTemplate
+				.replace('{{prompt}}', prompt)
+				.replace('{{response}}', ollamaResponse)
+				.replace('{{date}}', new Date().toLocaleString());
+
+			const mailOptions = {
 				from: process.env.EMAIL_USER,
 				to: email,
-				subject: 'Response from Ollama Server',
-				text: `Your prompt: ${prompt}\nResponse: ${ollamaResponse}`,
-			});
+				subject: 'Ответ от Ollama Server',
+				html: htmlEmail, // Важно: используем html вместо text
+				text: `Ваш запрос: ${prompt}\nОтвет: ${ollamaResponse}`, // Fallback для почтовых клиентов
+			};
+
+			await transporter.sendMail(mailOptions);
+			logger.info(`HTML email sent to ${email}`);
+
 			return res.json({
 				response: ollamaResponse,
-				message: 'Response sent to your email',
+				message: 'HTML response sent to your email',
 			});
 		}
 
