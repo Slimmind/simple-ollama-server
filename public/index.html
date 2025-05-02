@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASKY</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+
+<body>
+  <main>
+    <div class="asker">
+      <header class='asker__header'>
+        <h1>Asky Chat</h1>
+      </header>
+      <aside class="asker__sidebar">
+        <input type="text" id="model-input" placeholder="Enter your model here..." autocomplete="off">
+        <textarea id="prompt-input" placeholder="Enter your question here..." autocomplete="off"></textarea>
+        <input type="email" id="email-input" placeholder="Enter your email here...">
+        <button id="submit-btn">ASK</button>
+        <p class="status" id="status"></p>
+      </aside>
+      <div class="asker__content">
+        <div id="response-container" tabindex='0'>
+          <p>Response will appear here...</p>
+        </div>
+      </div>
+      <footer class="asker__footer">
+        <small>SLIMMIND&copy;2025</small>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const modelInput = document.getElementById('model-input');
+      const promptInput = document.getElementById('prompt-input');
+      const emailInput = document.getElementById('email-input');
+      const submitBtn = document.getElementById('submit-btn');
+      const responseContainer = document.getElementById('response-container');
+      const statusElement = document.getElementById('status');
+
+      submitBtn.addEventListener('click', async function () {
+        const model = modelInput.value.trim().toLowerCase();
+        const prompt = promptInput.value.trim();
+        const email = emailInput.value.trim().toLowerCase();
+
+        if (!model) {
+          statusElement.textContent = 'Please enter a model name';
+          return;
+        }
+
+        if (!prompt) {
+          statusElement.textContent = 'Please enter a question';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        statusElement.textContent = 'Processing your request...';
+        responseContainer.innerHTML = '<p>Waiting for response...</p>';
+        responseContainer.classList.add('loading');
+
+        try {
+          const response = await fetch('http://192.168.0.185:3000/ask', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              prompt,
+              email
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          responseContainer.innerHTML = `<p><strong>Response:</strong> ${data.response}</p>`;
+          responseContainer.classList.remove('loading');
+          statusElement.textContent = 'Request completed successfully';
+        } catch (error) {
+          console.error('Error:', error);
+          responseContainer.innerHTML = `<p><strong>Error:</strong> ${error.message}</p>`;
+          responseContainer.classList.remove('loading');
+          statusElement.textContent = 'Request failed';
+        } finally {
+          submitBtn.disabled = false;
+          responseContainer.classList.remove('loading');
+        }
+      });
+
+      // Allow submitting by pressing Enter
+      promptInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          submitBtn.click();
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -68,6 +68,15 @@ app.use(express.json());
 app.use(morgan('combined'));
 app.use(limiter);
 
+// Настройка статических файлов с явным Content-Type
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css')) {
+      res.set('Content-Type', 'text/css');
+    }
+  }
+}));
+
 // Проверка доступности Ollama
 async function checkOllama() {
 	try {
@@ -138,6 +147,10 @@ app.post('/ask', async (req, res) => {
 			details: error.message,
 		});
 	}
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Создаем HTTP-сервер
